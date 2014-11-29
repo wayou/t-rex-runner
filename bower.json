@@ -1,0 +1,10 @@
+{
+  "name": "trexrunner",
+  "version": "0.0.0",
+  "authors": [
+    ""
+  ],
+  "dependencies": {
+    "phaser-official": "latest"
+  }
+}
