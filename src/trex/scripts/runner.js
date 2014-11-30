@@ -256,13 +256,30 @@
                 document.getElementById(this.config.RESOURCE_TEMPLATE_ID).content;
 
             for (var sound in Runner.sounds) {
-                var soundSrc = resourceTemplate.getElementById(Runner.sounds[sound]).src;
-                soundSrc = soundSrc.substr(soundSrc.indexOf(',') + 1);
-                var buffer = decodeBase64ToArrayBuffer(soundSrc);
-                // Async, so no guarantee of order in array.
-                this.audioContext.decodeAudioData(buffer, function(index, audioData) {
-                    this.soundFx[index] = audioData;
-                }.bind(this, sound));
+                // var soundSrc = resourceTemplate.getElementById(Runner.sounds[sound]).src;
+                // soundSrc = soundSrc.substr(soundSrc.indexOf(',') + 1);
+
+                // var buffer = decodeBase64ToArrayBuffer(soundSrc);
+                // // Async, so no guarantee of order in array.
+                // this.audioContext.decodeAudioData(buffer, function(index, audioData) {
+                //     this.soundFx[index] = audioData;
+                // }.bind(this, sound));
+
+                var soundSrc = resourceTemplate.getElementById(Runner.sounds[sound]).getAttribute("src");
+                var request = new XMLHttpRequest();
+                request.open('GET', soundSrc, true);
+                request.responseType = 'arraybuffer';
+
+                // Decode asynchronously
+                request.onload = function() {
+                    this.audioContext.decodeAudioData(request.response, function(index, audioData) {
+                        this.soundFx[index] = audioData;
+                    }.bind(this, sound), function(err) {
+                        console.log('err loading sound:' + sound);
+                    });
+                };
+                request.send();
+
             }
         },
         /**
