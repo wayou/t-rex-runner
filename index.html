@@ -8,12 +8,30 @@
             #offline-resources{
                 display: none;
             }
+            .runner-container {
+              height: 150px;
+              max-width: 600px;
+              overflow: hidden;
+              position: absolute;
+              top: 10px;
+              width: 44px;
+              z-index: 2;
+            }
+            .controller {
+              background: rgba(247,247,247, .1);
+              height: 100vh;
+              left: 0;
+              position: absolute;
+              top: 0;
+              width: 100vw;
+              z-index: 1;
+            }
         </style>
     </head>
-    <body>
+    <body >
         <div id="main-frame-error" class="interstitial-wrapper" jstcache="0">
         <img class="icon icon-offline" jseval="updateIconClass(this.classList, iconClass)" jstcache="1" style="visibility: hidden;">
-            <div class="runner-container" style="width: 600px; height: 150px;">
+            <div class="runner-container" >
                 <canvas class="runner-canvas" width="600" height="150"></canvas>
             </div>
         </div>
