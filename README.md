@@ -1,5 +1,7 @@
-the trex runner game abstracted from chrome offline err page.
+T-Rex runner
+===========
+The t-rex runner in the game offline Chrome error page.
 
-[go and enjoy! :smile: ](http://wayou.github.io/t-rex-runner/)
+[DEMO](http://johntheboss.github.io/t-rex-runner/)
 
-![chrome offline game cast](img/chrome_offline_game.gif)
+![game images](img/t-rex_game.jpg)
