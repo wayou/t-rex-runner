@@ -3,29 +3,39 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0,
         maximum-scale=1.0, user-scalable=no">
-        <title>t.rex extracted</title>
+        <title>T-REX Game ONLINE</title>
         <style>
-            #offline-resources{
-                display: none;
-            }
-            .runner-container {
-              height: 150px;
-              max-width: 600px;
-              overflow: hidden;
-              position: absolute;
-              top: 10px;
-              width: 44px;
-              z-index: 2;
-            }
-            .controller {
-              background: rgba(247,247,247, .1);
-              height: 100vh;
-              left: 0;
-              position: absolute;
-              top: 0;
-              width: 100vw;
-              z-index: 1;
-            }
+body {
+  background-color: #f7f7f7;
+  color: #585858;
+  /*margin-top: -180px;*/
+}
+
+html {
+  font-size: 125%;
+}
+
+.interstitial-wrapper {
+  box-sizing: border-box;
+  font-size: 1em;
+  line-height: 1.6em;
+  margin: 100px auto 0;
+  max-width: 600px;
+  width: 100%;
+}
+
+@media (max-width: 400px) {
+  button,
+  [dir='rtl'] button {
+    float: none;
+    font-size: 1em;
+    width: 100%;
+  }
+
+}
+#offline-resources {
+  display: none;
+}
         </style>
     </head>
     <body >
