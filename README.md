@@ -1,4 +1,4 @@
-the trex runner game abstracted from chrome offline err page.
+the trex runner game extracted from chrome offline err page.
 
 [go and enjoy! :smile: ](http://wayou.github.io/t-rex-runner/)
 
