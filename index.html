@@ -26,14 +26,16 @@
               width: 100vw;
               z-index: 1;
             }
+            .interstitial-wrapper{
+              max-width: 600px;
+              position: relative;
+              margin: 5px auto;
+            }
         </style>
     </head>
     <body >
         <div id="main-frame-error" class="interstitial-wrapper" jstcache="0">
-        <img class="icon icon-offline" jseval="updateIconClass(this.classList, iconClass)" jstcache="1" style="visibility: hidden;">
-            <div class="runner-container" >
-                <canvas class="runner-canvas" width="600" height="150"></canvas>
-            </div>
+          <img class="icon icon-offline" jseval="updateIconClass(this.classList, iconClass)" jstcache="1" style="visibility: hidden;">
         </div>
         <div id="offline-resources" jstcache="0">
             <div id="offline-resources-1x" jstcache="0">
