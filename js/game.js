@@ -300,15 +300,12 @@ Runner.prototype = {
       for (var sound in Runner.sounds) {
         var soundSrc =
             resourceTemplate.getElementById(Runner.sounds[sound]).src;
-            console.log(resourceTemplate.getElementById(Runner.sounds[sound]).src);
-            console.log(resourceTemplate.getElementById(Runner.sounds[sound]).id);
         soundSrc = soundSrc.substr(soundSrc.indexOf(',') + 1);
         var buffer = decodeBase64ToArrayBuffer(soundSrc);
 
         // Async, so no guarantee of order in array.
         this.audioContext.decodeAudioData(buffer, function(index, audioData) {
             this.soundFx[index] = audioData;
-            console.log(this.soundFx);
           }.bind(this, sound));
       }
     }
