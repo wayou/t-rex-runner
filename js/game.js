@@ -68,6 +68,8 @@ function Runner(outerContainerId, opt_config) {
   // } else {
     this.loadImages();
   // }
+
+  this.gamepadPreviousKeyDown = false;
 }
 window['Runner'] = Runner;
 
@@ -215,7 +217,8 @@ Runner.events = {
   VISIBILITY: 'visibilitychange',
   BLUR: 'blur',
   FOCUS: 'focus',
-  LOAD: 'load'
+  LOAD: 'load',
+  GAMEPADCONNECTED: 'gamepadconnected'
 };
 
 
@@ -565,6 +568,7 @@ Runner.prototype = {
         case events.KEYDOWN:
         case events.TOUCHSTART:
         case events.MOUSEDOWN:
+        case events.GAMEPADCONNECTED:
           this.onKeyDown(e);
           break;
         case events.KEYUP:
@@ -593,6 +597,35 @@ Runner.prototype = {
       // Mouse.
       document.addEventListener(Runner.events.MOUSEDOWN, this);
       document.addEventListener(Runner.events.MOUSEUP, this);
+    }
+    window.addEventListener(Runner.events.GAMEPADCONNECTED, this);
+    window.setInterval(this.pollGamepads.bind(this), 10);
+  },
+
+  /**
+   * Convert Gamepad input events to keydown/up events (spacebar)
+  */
+  pollGamepads: function() {
+    var gamepads = navigator.getGamepads();
+    var keydown = false;
+    for(var i = 0; i < gamepads.length; i++) {
+      if (gamepads[i] != undefined) {
+        if (gamepads[i].buttons.filter(function(e){return e.pressed == true}).length > 0) {
+          keydown = true;
+        }
+      }
+    }
+    if (keydown != this.gamepadPreviousKeyDown) {
+      this.gamepadPreviousKeyDown = keydown;
+
+      var event = new Event(keydown ? 'keydown' : 'keyup');
+      event.keyCode = 32;//keys(Runner.keycodes.JUMP)[0];
+      event.which = event.keyCode;
+      event.altKey = false;
+      event.ctrlKey = true;
+      event.shiftKey = false;
+      event.metaKey = false;
+      document.dispatchEvent(event);
     }
   },
 
@@ -625,7 +658,7 @@ Runner.prototype = {
 
     // if (e.target != this.detailsButton) {
       if (!this.crashed && (Runner.keycodes.JUMP[e.keyCode] ||
-           e.type == Runner.events.TOUCHSTART)) {
+           e.type == Runner.events.TOUCHSTART || e.type == Runner.events.GAMEPADCONNECTED)) {
         if (!this.activated) {
           this.loadSounds();
           this.activated = true;
