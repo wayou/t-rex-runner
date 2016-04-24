@@ -215,7 +215,8 @@ Runner.events = {
   VISIBILITY: 'visibilitychange',
   BLUR: 'blur',
   FOCUS: 'focus',
-  LOAD: 'load'
+  LOAD: 'load',
+  GAMEPADCONNECTED: 'gamepadconnected'
 };
 
 
@@ -565,6 +566,7 @@ Runner.prototype = {
         case events.KEYDOWN:
         case events.TOUCHSTART:
         case events.MOUSEDOWN:
+        case events.GAMEPADCONNECTED:
           this.onKeyDown(e);
           break;
         case events.KEYUP:
@@ -594,6 +596,7 @@ Runner.prototype = {
       document.addEventListener(Runner.events.MOUSEDOWN, this);
       document.addEventListener(Runner.events.MOUSEUP, this);
     }
+    window.addEventListener(Runner.events.GAMEPADCONNECTED, this);
   },
 
   /**
@@ -625,7 +628,7 @@ Runner.prototype = {
 
     // if (e.target != this.detailsButton) {
       if (!this.crashed && (Runner.keycodes.JUMP[e.keyCode] ||
-           e.type == Runner.events.TOUCHSTART)) {
+           e.type == Runner.events.TOUCHSTART || e.type == Runner.events.GAMEPADCONNECTED)) {
         if (!this.activated) {
           this.loadSounds();
           this.activated = true;
