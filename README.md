@@ -21,3 +21,7 @@ the trex runner game extracted from chrome offline err page.
 <br>
 ![](assets/novas-coisas.gif)
 
+- [chirag64](https://github.com/chirag64)/[t-rex-runner-bot](https://github.com/chirag64/t-rex-runner-bot) [t-rex runner bot](https://chirag64.github.io/t-rex-runner-bot/) 
+<br>
+![](assets/t-rex-runner-bot.gif)
+
