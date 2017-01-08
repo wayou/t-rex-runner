@@ -16,8 +16,8 @@ html,body{
 
 .icon-offline {
   content: -webkit-image-set(
-      url(default_100_percent/offline/100-error-offline.png) 1x,
-      url(default_200_percent/offline/200-error-offline.png) 2x);
+      url(/assets/default_100_percent/100-error-offline.png) 1x,
+      url(/assets/default_200_percent/200-error-offline.png) 2x);
   position: relative;
 }
 
@@ -137,19 +137,8 @@ html,body{
 }
 
 @media (max-width: 240px) {
-  button {
-    padding-left: 12px;
-    padding-right: 12px;
-  }
-
   .interstitial-wrapper {
     overflow: inherit;
     padding: 0 8px;
-  }
-}
-
-@media (max-width: 120px) {
-  button {
-    width: auto;
   }
 }
