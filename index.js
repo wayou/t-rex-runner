@@ -396,6 +396,7 @@
         createTouchController: function () {
             this.touchController = document.createElement('div');
             this.touchController.className = Runner.classes.TOUCH_CONTROLLER;
+            this.outerContainerEl.appendChild(this.touchController);
         },
 
         /**
@@ -473,9 +474,9 @@
                 this.containerEl.style.webkitAnimation = 'intro .4s ease-out 1 both';
                 this.containerEl.style.width = this.dimensions.WIDTH + 'px';
 
-                if (this.touchController) {
-                    this.outerContainerEl.appendChild(this.touchController);
-                }
+                // if (this.touchController) {
+                //     this.outerContainerEl.appendChild(this.touchController);
+                // }
                 this.playing = true;
                 this.activated = true;
             } else if (this.crashed) {
@@ -680,8 +681,9 @@
                     }
                 }
 
-                if (this.crashed && e.type == Runner.events.TOUCHSTART &&
-                    e.currentTarget == this.containerEl) {
+                // if (this.crashed && e.type == Runner.events.TOUCHSTART &&
+                //     e.currentTarget == this.containerEl) {
+                if (this.crashed && e.type == Runner.events.TOUCHSTART) {
                     this.restart();
                 }
             }
