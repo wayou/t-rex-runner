@@ -17,7 +17,7 @@ the trex runner game extracted from chrome offline err page.
 <br>
 ![](assets/hello-kugou.gif)
 
-- [d-nery](https://github.com/d-nery)/[t-rex-runner](https://github.com/xkuga/t-rex-runner) [Novas coisas](http://d-nery.github.io/t-rex-runner/) 
+- [d-nery](https://github.com/d-nery/)/[t-rex-runner](https://github.com/d-nery/t-rex-runner) [Novas coisas](http://d-nery.github.io/t-rex-runner/) 
 <br>
 ![](assets/novas-coisas.gif)
 
