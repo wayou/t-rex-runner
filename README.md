@@ -1,5 +1,7 @@
 ## t-rex-runner
 
+## I HAVE ADDED A NEW CHARACTER HOPE YOU ALL LIKE IT ##
+
 the trex runner game extracted from chrome offline err page.
 
 
