@@ -11,6 +11,7 @@ html, body {
 
 .icon {
   -webkit-user-select: none;
+  user-select: none;
   display: inline-block;
 }
 
