@@ -25,3 +25,8 @@ the trex runner game extracted from chrome offline err page.
 <br>
 ![](assets/t-rex-runner-bot.gif)
 
+- [19janil](https://github.com/19janil)/[t-rex-runner](https://github.com/19janil/t-rex-runner) [t-rex runner](https://19janil.github.io/t-rex-runner/) 
+<br>
+![](assets/t-rex-runner-19janil.gif)
+
+
