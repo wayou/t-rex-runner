@@ -36,4 +36,9 @@ see the [source](https://cs.chromium.org/chromium/src/components/neterror/resour
 
 ![](assets/t-rex-runner-19janil.gif)
 
+- [enthus1ast](https://github.com/enthus1ast)/[chromeTrip](https://github.com/enthus1ast/chromeTrip) [Chrome Trip by code0](https://code0.itch.io/chrome-trip) 
+<br>
+
+![](https://user-images.githubusercontent.com/13794470/37289691-964618be-260a-11e8-8c4a-6df04d6c490d.gif)
+
 
