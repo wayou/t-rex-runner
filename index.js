@@ -1959,7 +1959,7 @@
             var sourceX = DistanceMeter.dimensions.WIDTH * value;
             var sourceY = 0;
 
-            var targetX = digitPos * DistanceMeter.dimensions.DEST_WIDTH;
+            var targetX = digitPos * DistanceMeter.dimensions.DEST_WIDTH -120; //make space for the highscore right /Gustav
             var targetY = this.y;
             var targetWidth = DistanceMeter.dimensions.WIDTH;
             var targetHeight = DistanceMeter.dimensions.HEIGHT;
@@ -1977,8 +1977,8 @@
             this.canvasCtx.save();
 
             if (opt_highScore) {
-                // Left of the current score.
-                var highScoreX = this.x - (this.maxScoreUnits * 2) *
+                // Left of the current score. No lets make it right! /Gustav
+                var highScoreX = this.x + (this.maxScoreUnits * 2) *
                     DistanceMeter.dimensions.WIDTH;
                 this.canvasCtx.translate(highScoreX, this.y);
             } else {
@@ -2065,7 +2065,6 @@
                     this.draw(i, parseInt(this.digits[i]));
                 }
             }
-
             this.drawHighScore();
             return playSound;
         },
@@ -2701,12 +2700,13 @@
          * Add a new cloud to the horizon.
          */
         addCloud: function () {
-            this.clouds.push(new Cloud(this.canvas, this.spritePos.CLOUD,
-                this.dimensions.WIDTH));
+            // I've had it with the motherf*ckning clouds on this motherf*ckning plane /Samuel L. Jackson
+            // this.clouds.push(new Cloud(this.canvas, this.spritePos.CLOUD,
+            //     this.dimensions.WIDTH));
+
         }
     };
 })();
-
 
 function onDocumentLoad() {
     new Runner('.interstitial-wrapper');
