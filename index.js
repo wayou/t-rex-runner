@@ -1201,8 +1201,8 @@
         // Axis-Aligned Bounding Box method.
         if (tRexBox.x < obstacleBoxX + obstacleBox.width &&
             tRexBox.x + tRexBox.width > obstacleBoxX &&
-            tRexBox.y < obstacleBox.y + obstacleBox.height &&
-            tRexBox.height + tRexBox.y > obstacleBox.y) {
+            tRexBox.y < obstacleBoxY + obstacleBox.height &&
+            tRexBox.height + tRexBox.y > obstacleBoxY) {
             crashed = true;
         }
 
