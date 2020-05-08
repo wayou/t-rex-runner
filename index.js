@@ -201,8 +201,8 @@
      * @enum {Object}
      */
     Runner.keycodes = {
-        JUMP: { '38': 1, '32': 1, '16': 1 },  // Up, spacebar, shift
-        DUCK: { '40': 1 },  // Down
+        JUMP: { '38': 1, '32': 1 },  // Up, spacebar
+        DUCK: { '40': 1, '16': 1},  // Down, shift
         RESTART: { '13': 1 }  // Enter
     };
 
