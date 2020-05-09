@@ -20,6 +20,7 @@
       <h1 style="text-align: center;font-family: 'Open Sans', sans-serif;">
         Press Space to start
       </h1>
+      
       <div class="niokbutton" onclick="okbuttonsend()"></div>
     </div>
     <div id="main-frame-error" class="interstitial-wrapper">
@@ -28,7 +29,6 @@
       </div>
       <div id="offline-resources">
         <img id="offline-resources-1x" src="assets/offline-sprite-1x.png" />
-        <img id="offline-resources-2x" src="assets/offline-sprite-2x.png" />
         <template id="audio-resources">
           <audio
             id="offline-sound-press"
@@ -45,9 +45,18 @@
         </template>
       </div>
     </div>
+    
+    <button id="demo">select Sonic </button>
+  </div>
+    </div>
   </body>
 
   <script>
+    document.getElementById("demo").onclick = function() {myFunction()};
+
+    function myFunction() {
+  document.getElementById("offline-resources-1x").src = "sonic.png";
+}
     document.onkeydown = function(evt) {
       evt = evt || window.event;
       if (evt.keyCode == 32) {
