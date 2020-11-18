@@ -87,7 +87,7 @@
     var FPS = 60;
 
     /** @const */
-    var IS_HIDPI = window.devicePixelRatio > 1;
+    var IS_HIDPI = 2;
 
     /** @const */
     var IS_IOS = /iPad|iPhone|iPod/.test(window.navigator.platform);
@@ -290,7 +290,7 @@
                 Runner.imageSprite = document.getElementById('offline-resources-2x');
                 this.spriteDef = Runner.spriteDefinition.HDPI;
             } else {
-                Runner.imageSprite = document.getElementById('offline-resources-1x');
+                Runner.imageSprite = document.getElementById('offline-resources-2x');
                 this.spriteDef = Runner.spriteDefinition.LDPI;
             }
 
