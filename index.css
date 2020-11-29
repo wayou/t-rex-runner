@@ -24,6 +24,13 @@ html, body {
   display: none;
 }
 
+#kispy{
+  margin:   auto;
+  height: 300px;  width: 400px; 
+  background-image:  url(assets/kispyPng4.png);
+  background-size: contain;
+  background-repeat: no-repeat;
+}
 
 /* Offline page */
 
