@@ -123,7 +123,9 @@
         MOBILE_SPEED_COEFFICIENT: 1.2,
         RESOURCE_TEMPLATE_ID: 'audio-resources',
         SPEED: 6,
-        SPEED_DROP_COEFFICIENT: 3
+        SPEED_DROP_COEFFICIENT: 3,
+        ARCADE_MODE_INITIAL_TOP_POSITION: 35,
+        ARCADE_MODE_TOP_POSITION_PERCENT: 0.1
     };
 
 
@@ -142,6 +144,7 @@
      * @enum {string}
      */
     Runner.classes = {
+        ARCADE_MODE: 'arcade-mode',
         CANVAS: 'runner-canvas',
         CONTAINER: 'runner-container',
         CRASHED: 'crashed',
@@ -422,7 +425,11 @@
                 boxStyles.paddingLeft.length - 2));
 
             this.dimensions.WIDTH = this.outerContainerEl.offsetWidth - padding * 2;
-
+            this.dimensions.WIDTH = Math.min(DEFAULT_WIDTH, this.dimensions.WIDTH); //Arcade Mode
+            if (this.activated) {
+                this.setArcadeModeContainerScale();
+            }
+            
             // Redraw the elements back onto the canvas.
             if (this.canvas) {
                 this.canvas.width = this.dimensions.WIDTH;
@@ -495,6 +502,7 @@
          * Update the game status to started.
          */
         startGame: function () {
+            this.setArcadeMode();
             this.runningTime = 0;
             this.playingIntro = false;
             this.tRex.playingIntro = false;
@@ -834,7 +842,36 @@
                 this.update();
             }
         },
+        
+        /**
+         * Hides offline messaging for a fullscreen game only experience.
+         */
+        setArcadeMode() {
+            document.body.classList.add(Runner.classes.ARCADE_MODE);
+            this.setArcadeModeContainerScale();
+        },
 
+        /**
+         * Sets the scaling for arcade mode.
+         */
+        setArcadeModeContainerScale() {
+            const windowHeight = window.innerHeight;
+            const scaleHeight = windowHeight / this.dimensions.HEIGHT;
+            const scaleWidth = window.innerWidth / this.dimensions.WIDTH;
+            const scale = Math.max(1, Math.min(scaleHeight, scaleWidth));
+            const scaledCanvasHeight = this.dimensions.HEIGHT * scale;
+            // Positions the game container at 10% of the available vertical window
+            // height minus the game container height.
+            const translateY = Math.ceil(Math.max(0, (windowHeight - scaledCanvasHeight -
+                                                      Runner.config.ARCADE_MODE_INITIAL_TOP_POSITION) *
+                                                  Runner.config.ARCADE_MODE_TOP_POSITION_PERCENT)) *
+                  window.devicePixelRatio;
+
+            const cssScale = scale;
+            this.containerEl.style.transform =
+                'scale(' + cssScale + ') translateY(' + translateY + 'px)';
+        },
+        
         /**
          * Pause the game if the tab is not in focus.
          */
