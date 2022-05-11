@@ -73,7 +73,7 @@ class ObserverBuilder {
             nextObstacleWidth: nextObstacle?.dimensions?.HEIGHT ?? -1,
             nextObstacleDist: nextObstacle?.xPos - this.dinogame.tRex.xPos ?? -1,
         }
-        
+
     }
 
 }
@@ -2866,12 +2866,19 @@ class ObserverBuilder {
 function onDocumentLoad() {
     // (Potentially) seeded random number gererator
     window.SeededRandom = new PseudoRandom(12345)
+
+    const url = new URL(window.location.href);
+    const frameByFrame = url.searchParams.get("frameByFrame") ?? false;
+
     runner = new Runner('.interstitial-wrapper');
+    runner.config.FRAME_BY_FRAME_MODE = frameByFrame
     runner.playIntro()
     runner.doReset()
+    
     window['Controller'] = new ControllerBuilder();
     window['Observer'] = new ObserverBuilder();
     window.Controller.config.FRAME_BY_FRAME_MODE = false
+
     // window.Controller.reset()
 }
 
