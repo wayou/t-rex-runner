@@ -2868,7 +2868,8 @@ function onDocumentLoad() {
     window.SeededRandom = new PseudoRandom(12345)
 
     const url = new URL(window.location.href);
-    const frameByFrame = url.searchParams.get("frameByFrame") ?? false;
+    let frameByFrame = url.searchParams.get("frameByFrame") ?? 'false';
+    frameByFrame = frameByFrame == 'true'
 
     runner = new Runner('.interstitial-wrapper');
     runner.config.FRAME_BY_FRAME_MODE = frameByFrame
@@ -2877,7 +2878,6 @@ function onDocumentLoad() {
     
     window['Controller'] = new ControllerBuilder();
     window['Observer'] = new ObserverBuilder();
-    window.Controller.config.FRAME_BY_FRAME_MODE = false
 
     // window.Controller.reset()
 }
