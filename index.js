@@ -2,6 +2,82 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 // extract from chromium source code by @liuwayong
+
+const repeat = (func, repeatTimes) => {
+    for (let repeatNum = 0; repeatNum < repeatTimes; repeatNum++) {
+        func()
+    }
+}
+
+class PseudoRandom {
+    constructor(seed = null) {
+        this.random = ((seed !== null) ? new Math.seedrandom(seed) : Math.random);
+    }
+}
+
+class ControllerBuilder {
+
+    constructor (dinogame){
+        // Singleton
+        if (ControllerBuilder.instance_) {
+            return ControllerBuilder.instance_;
+        }
+        ControllerBuilder.instance_ = this;
+
+        this.dinogame = Runner()
+
+        this.actions = {
+            jump: (callback = null) => this.dinogame.doJump(callback),
+            duck: (callback = null) => this.dinogame.doDuck(callback),
+            forward: (callback = null) => this.dinogame.doForward(callback)
+        }
+
+        this.config = this.dinogame.config
+    }
+
+    reset() {
+        this.dinogame.doReset()
+    }
+
+    start(callback = null) {
+        this.dinogame.playIntro()
+    }
+
+    setSeed(seed) {
+        window.SeededRandom = new PseudoRandom(seed)
+    }
+
+}
+
+class ObserverBuilder {
+
+    constructor() {
+        // Singleton
+        if (ObserverBuilder.instance_) {
+            return ObserverBuilder.instance_;
+        }
+        ObserverBuilder.instance_ = this;
+
+        this.dinogame = Runner()
+    }
+
+    getObservation() {
+
+        const nextObstacle = this.dinogame.horizon.obstacles[0]
+
+        return {
+            gameSpeed: this.dinogame.currentSpeed, 
+            playerY: this.dinogame.tRex.yPos, 
+            nextObstacleY: nextObstacle?.dimensions?.HEIGHT ?? -1, 
+            nextObstacleHeight: nextObstacle?.dimensions?.HEIGHT ?? -1,
+            nextObstacleWidth: nextObstacle?.dimensions?.HEIGHT ?? -1,
+            nextObstacleDist: nextObstacle?.xPos - this.dinogame.tRex.xPos ?? -1,
+        }
+        
+    }
+
+}
+
 (function () {
     'use strict';
     /**
@@ -65,6 +141,9 @@
         this.images = {};
         this.imagesLoaded = 0;
 
+        // Callback to be called after the next tick is complete
+        this.nextTickCallback = null
+
         if (this.isDisabled()) {
             this.setupDisabledRunner();
         } else {
@@ -123,7 +202,10 @@
         MOBILE_SPEED_COEFFICIENT: 1.2,
         RESOURCE_TEMPLATE_ID: 'audio-resources',
         SPEED: 6,
-        SPEED_DROP_COEFFICIENT: 3
+        SPEED_DROP_COEFFICIENT: 3,
+        // If this is true then the game will update everytime a move is made, instead of on atime
+        FRAME_BY_FRAME_MODE: true,
+        FRAMES_PER_MOVE: 1
     };
 
 
@@ -203,7 +285,8 @@
     Runner.keycodes = {
         JUMP: { '38': 1, '32': 1 },  // Up, spacebar
         DUCK: { '40': 1 },  // Down
-        RESTART: { '13': 1 }  // Enter
+        RESTART: { '13': 1 },  // Enter
+        FORWARD: { '39': 1 } // Right
     };
 
 
@@ -524,7 +607,9 @@
             this.updatePending = false;
 
             var now = getTimeStamp();
-            var deltaTime = now - (this.time || now);
+
+            const secondsPerFrame = 1000/FPS
+            var deltaTime = this.config.FRAME_BY_FRAME_MODE ? secondsPerFrame : (now - (this.time || now));
             this.time = now;
 
             if (this.playing) {
@@ -598,8 +683,15 @@
             if (this.playing || (!this.activated &&
                 this.tRex.blinkCount < Runner.config.MAX_BLINK_COUNT)) {
                 this.tRex.update(deltaTime);
-                this.scheduleNextUpdate();
+                if (!this.config.FRAME_BY_FRAME_MODE) this.scheduleNextUpdate()
+
+                this.runNextTickCallback()
             }
+        },
+
+        runNextTickCallback: function() {
+            if (this.nextTickCallback != null) this.nextTickCallback()
+            this.nextTickCallback = null
         },
 
         /**
@@ -673,18 +765,10 @@
                 if (!this.crashed && (Runner.keycodes.JUMP[e.keyCode] ||
                     e.type == Runner.events.TOUCHSTART)) {
                     if (!this.playing) {
-                        this.loadSounds();
-                        this.playing = true;
-                        this.update();
-                        if (window.errorPageController) {
-                            errorPageController.trackEasterEgg();
-                        }
+                        this.doStart()
                     }
                     //  Play sound effect and jump on starting the game for the first time.
-                    if (!this.tRex.jumping && !this.tRex.ducking) {
-                        this.playSound(this.soundFx.BUTTON_PRESS);
-                        this.tRex.startJump(this.currentSpeed);
-                    }
+                    this.doJump()
                 }
 
                 if (this.crashed && e.type == Runner.events.TOUCHSTART &&
@@ -695,14 +779,85 @@
 
             if (this.playing && !this.crashed && Runner.keycodes.DUCK[e.keyCode]) {
                 e.preventDefault();
-                if (this.tRex.jumping) {
-                    // Speed drop, activated only when jump key is not pressed.
-                    this.tRex.setSpeedDrop();
-                } else if (!this.tRex.jumping && !this.tRex.ducking) {
-                    // Duck.
-                    this.tRex.setDuck(true);
-                }
+                this.doDuck()
             }
+
+            if (this.playing && !this.crashed && Runner.keycodes.FORWARD[e.keyCode]) {
+                e.preventDefault();
+                this.doForward()
+            }
+        },
+
+        doAction: function (actionType) {
+            switch(actionType) {
+                case "jump":
+                    this.doJump()
+                    break
+                case "duck":
+                    this.doDuck()
+                    break
+                case "endduck":
+                    this.doEndDuck()
+                    break
+                case "forward":
+                    this.doForward()
+                    break
+                case "reset":
+                    this.doReset()
+                    break
+            }
+        },
+
+        doJump: function (callback = null) {
+            if (this.tRex.ducking) this.doEndDuck();
+            if (!this.tRex.jumping && !this.tRex.ducking) {
+                this.playSound(this.soundFx.BUTTON_PRESS);
+                this.tRex.startJump(this.currentSpeed);
+            }
+            if (this.config.FRAME_BY_FRAME_MODE) this.scheduleNextUpdate()
+            this.nextTickCallback = callback
+        },
+
+        doDuck: function (callback = null) {
+            if (this.tRex.jumping) {
+                // Speed drop, activated only when jump key is not pressed.
+                this.tRex.setSpeedDrop();
+            } else if (!this.tRex.jumping && !this.tRex.ducking) {
+                // Duck.
+                this.tRex.setDuck(true);
+            }
+            if (this.config.FRAME_BY_FRAME_MODE) this.scheduleNextUpdate()
+            this.nextTickCallback = callback
+        },
+        
+        doEndDuck: function (callback = null) {
+            this.tRex.speedDrop = false;
+            this.tRex.setDuck(false);
+        },
+
+        doForward: function (callback = null) {
+            if (this.config.FRAME_BY_FRAME_MODE) {
+                if (this.tRex.ducking) this.doEndDuck();
+                if (this.isRunning()) this.tRex.endJump();
+                this.scheduleNextUpdate()
+            }
+            this.nextTickCallback = callback
+        },
+
+        doReset: function(callback = null) {
+            this.activated = false
+            this.restart();
+            this.nextTickCallback = callback
+        },
+
+        doStart: function(callback = null) {
+            this.loadSounds();
+            this.playing = true;
+            this.update();
+            if (window.errorPageController) {
+                errorPageController.trackEasterEgg();
+            }
+            this.nextTickCallback = callback
         },
 
 
@@ -719,16 +874,15 @@
             if (this.isRunning() && isjumpKey) {
                 this.tRex.endJump();
             } else if (Runner.keycodes.DUCK[keyCode]) {
-                this.tRex.speedDrop = false;
-                this.tRex.setDuck(false);
+                // If in frame by frame mode, duck is ended by pressing forward
+                if (!this.config.FRAME_BY_FRAME_MODE) this.doEndDuck()
             } else if (this.crashed) {
                 // Check that enough time has elapsed before allowing jump key to restart.
                 var deltaTime = getTimeStamp() - this.time;
-
                 if (Runner.keycodes.RESTART[keyCode] || this.isLeftClickOnCanvas(e) ||
                     (deltaTime >= this.config.GAMEOVER_CLEAR_TIME &&
                         Runner.keycodes.JUMP[keyCode])) {
-                    this.restart();
+                    this.doReset()
                 }
             } else if (this.paused && isjumpKey) {
                 // Reset the jump state
@@ -754,7 +908,8 @@
         scheduleNextUpdate: function () {
             if (!this.updatePending) {
                 this.updatePending = true;
-                this.raqId = requestAnimationFrame(this.update.bind(this));
+                const callback = this.config.FRAME_BY_FRAME_MODE ? (...args) => repeat(() => this.update.call(this, args), this.config.FRAMES_PER_MOVE) : this.update.bind(this)
+                this.raqId = requestAnimationFrame(callback);
             }
         },
 
@@ -809,8 +964,8 @@
             if (!this.crashed) {
                 this.playing = true;
                 this.paused = false;
-                this.tRex.update(0, Trex.status.RUNNING);
                 this.time = getTimeStamp();
+                this.tRex.update(0, Trex.status.RUNNING);
                 this.update();
             }
         },
@@ -931,7 +1086,7 @@
      * @param {number}
      */
     function getRandomNum(min, max) {
-        return Math.floor(Math.random() * (max - min + 1)) + min;
+        return Math.floor(SeededRandom.random() * (max - min + 1)) + min;
     }
 
 
@@ -1318,7 +1473,7 @@
 
                 // For obstacles that go at a different speed from the horizon.
                 if (this.typeConfig.speedOffset) {
-                    this.speedOffset = Math.random() > 0.5 ? this.typeConfig.speedOffset :
+                    this.speedOffset = SeededRandom.random() > 0.5 ? this.typeConfig.speedOffset :
                         -this.typeConfig.speedOffset;
                 }
 
@@ -1722,7 +1877,7 @@
          * Sets a random time for the blink to happen.
          */
         setBlinkDelay: function () {
-            this.blinkDelay = Math.ceil(Math.random() * Trex.BLINK_TIMING);
+            this.blinkDelay = Math.ceil(SeededRandom.random() * Trex.BLINK_TIMING);
         },
 
         /**
@@ -2421,7 +2576,7 @@
          * Return the crop x position of a type.
          */
         getRandomType: function () {
-            return Math.random() > this.bumpThreshold ? this.dimensions.WIDTH : 0;
+            return SeededRandom.random() > this.bumpThreshold ? this.dimensions.WIDTH : 0;
         },
 
         /**
@@ -2581,7 +2736,7 @@
                 // Check for adding a new cloud.
                 if (numClouds < this.config.MAX_CLOUDS &&
                     (this.dimensions.WIDTH - lastCloud.xPos) > lastCloud.cloudGap &&
-                    this.cloudFrequency > Math.random()) {
+                    this.cloudFrequency > SeededRandom.random()) {
                     this.addCloud();
                 }
 
@@ -2709,7 +2864,15 @@
 
 
 function onDocumentLoad() {
-    new Runner('.interstitial-wrapper');
+    // (Potentially) seeded random number gererator
+    window.SeededRandom = new PseudoRandom(12345)
+    runner = new Runner('.interstitial-wrapper');
+    runner.playIntro()
+    runner.doReset()
+    window['Controller'] = new ControllerBuilder();
+    window['Observer'] = new ObserverBuilder();
+    window.Controller.config.FRAME_BY_FRAME_MODE = false
+    // window.Controller.reset()
 }
 
 document.addEventListener('DOMContentLoaded', onDocumentLoad);
