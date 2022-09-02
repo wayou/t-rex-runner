@@ -97,7 +97,10 @@
 
     /** @const */
     var IS_TOUCH_ENABLED = 'ontouchstart' in window;
-
+    
+    /** @const */
+    var IS_AUDIO_SUPPORT = 'AudioContext' in window;
+    
     /**
      * Default game configuration.
      * @enum {number}
@@ -310,7 +313,7 @@
          * Load and decode base 64 encoded sounds.
          */
         loadSounds: function () {
-            if (!IS_IOS) {
+            if (!IS_IOS && IS_AUDIO_SUPPORT) {
                 this.audioContext = new AudioContext();
 
                 var resourceTemplate =
