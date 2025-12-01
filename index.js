@@ -348,9 +348,23 @@
         },
 
         /**
-         * Game initialiser.
+         * Game initialiser - GATE for Roar Runner modals.
+         * Waits for modal flow completion before starting game.
          */
         init: function () {
+            // ROAR RUNNER: Don't initialize game until modals are complete
+            // The modal controller will call initGame() when ready
+            if (!window.roarModalComplete) {
+                return;
+            }
+
+            this.initGame();
+        },
+
+        /**
+         * Game initialiser - Original game initialization logic.
+         */
+        initGame: function () {
             // Hide the static icon.
             document.querySelector('.' + Runner.classes.ICON).style.visibility =
                 'hidden';
@@ -387,11 +401,115 @@
                 this.createTouchController();
             }
 
+            // ROAR RUNNER: Setup voice jump callback
+            this.setupVoiceControl();
+
+            // ROAR RUNNER: Initialize volume bar
+            this.setupVolumeBar();
+
             this.startListening();
             this.update();
 
             window.addEventListener(Runner.events.RESIZE,
                 this.debounceResize.bind(this));
+        },
+
+        /**
+         * ROAR RUNNER: Setup voice control for jumping.
+         */
+        setupVoiceControl: function () {
+            var self = this;
+
+            if (!window.roarAudioManager) {
+                console.warn('Audio manager not initialized');
+                return;
+            }
+
+            // Register jump callback
+            window.roarAudioManager.onJump(function(volume) {
+                // Check if jump is allowed
+                if (!self.playing) {
+                    // Start game on first jump
+                    self.loadSounds();
+                    self.playing = true;
+                    self.update();
+
+                    // Start audio recording
+                    window.roarAudioManager.startRecording();
+
+                    // Show volume bar on game start
+                    if (self.volumeBar) {
+                        self.volumeBar.show();
+                    }
+
+                    // Start session timing
+                    self.exportRoarData();
+                }
+
+                // Trigger jump if not already jumping and not ducking
+                if (!self.tRex.jumping && !self.tRex.ducking) {
+                    self.playSound(self.soundFx.BUTTON_PRESS);
+                    self.tRex.startJump(self.currentSpeed);
+                }
+            });
+        },
+
+        /**
+         * ROAR RUNNER: Setup volume bar visualizer.
+         */
+        setupVolumeBar: function () {
+            var self = this;
+            var canvas = document.getElementById('volume-bar');
+
+            if (!canvas) {
+                console.warn('Volume bar canvas not found');
+                return;
+            }
+
+            var threshold = window.roarParticipantData.jumpThreshold;
+            this.volumeBar = new RoarVolumeBar(canvas, threshold);
+
+            // Register volume change callback
+            if (window.roarAudioManager) {
+                window.roarAudioManager.onVolumeChange(function(volume) {
+                    if (self.volumeBar) {
+                        self.volumeBar.update(volume);
+                    }
+                });
+            }
+
+            // Initialize data collector and start session tracking
+            if (!this.dataCollector) {
+                this.dataCollector = new RoarDataCollector();
+            }
+        },
+
+        /**
+         * ROAR RUNNER: Export session data to server with fallback to ZIP.
+         */
+        exportRoarData: function () {
+            var self = this;
+
+            // Start session timing on first call (when game starts)
+            if (!this.dataCollector.sessionStartTime) {
+                this.dataCollector.startSession();
+                return;
+            }
+
+            // Stop audio recording
+            if (!window.roarAudioManager) {
+                console.warn('Audio manager not available');
+                return;
+            }
+
+            window.roarAudioManager.stopRecording().then(function(audioBlob) {
+                // Capture game stats
+                var sessionData = self.dataCollector.captureGameStats(self);
+
+                // Export data
+                var exporter = new RoarDataExporter();
+                exporter.exportData(sessionData, audioBlob);
+            });
         },
 
         /**
@@ -678,8 +796,16 @@
             }
 
             if (e.target != this.detailsButton) {
+                // ROAR RUNNER: Disable keyboard/mouse jump when voice control is active
+                // Only allow restart on crash
                 if (!this.crashed && (Runner.keycodes.JUMP[e.keyCode] ||
                     e.type == Runner.events.TOUCHSTART)) {
+
+                    // Block jump if audio manager is active (voice mode)
+                    if (window.roarAudioManager && this.playing) {
+                        return;
+                    }
+
                     if (!this.playing) {
                         this.loadSounds();
                         this.playing = true;
@@ -804,6 +930,12 @@
 
             // Reset the time clock.
             this.time = getTimeStamp();
+
+            // ROAR RUNNER: Hide volume bar and export data
+            if (this.volumeBar) {
+                this.volumeBar.hide();
+            }
+            this.exportRoarData();
         },
 
         stop: function () {
@@ -2745,8 +2877,724 @@
 })();
 
 
+// =====================================================
+// ROAR RUNNER MODULES
+// =====================================================
+
+/**
+ * RoarModalController - Manages pre-game modal flow
+ * Handles consent, questionnaire, and microphone calibration
+ */
+var RoarModalController = (function() {
+    'use strict';
+
+    function RoarModalController() {
+        this.consentModal = document.getElementById('consent-modal');
+        this.questionnaireModal = document.getElementById('questionnaire-modal');
+        this.calibrationModal = document.getElementById('calibration-modal');
+
+        this.consentCheckbox = document.getElementById('consent-checkbox');
+        this.consentBtn = document.getElementById('consent-continue');
+
+        this.participantUUID = document.getElementById('participant-uuid');
+        this.ageRange = document.getElementById('age-range');
+        this.baselineStress = document.querySelectorAll('input[name="baseline-stress"]');
+        this.questionnaireBtn = document.getElementById('questionnaire-continue');
+
+        this.calibrationCanvas = document.getElementById('calibration-canvas');
+        this.calibrationCtx = this.calibrationCanvas.getContext('2d');
+        this.testScreamBtn = document.getElementById('test-scream-btn');
+        this.recalibrateBtn = document.getElementById('recalibrate-btn');
+        this.currentVolumeSpan = document.getElementById('current-volume');
+        this.thresholdValueSpan = document.getElementById('threshold-value');
+        this.calibrationStartBtn = document.getElementById('calibration-start');
+
+        this.isCalibrating = false;
+        this.peakVolume = 0;
+
+        // Initialize participant data
+        window.roarParticipantData = {
+            uuid: this.generateUUID(),
+            ageRange: '',
+            baselineStress: null,
+            jumpThreshold: 0
+        };
+
+        // Set UUID in the input field
+        this.participantUUID.value = window.roarParticipantData.uuid;
+
+        this.init();
+    }
+
+    RoarModalController.prototype = {
+        init: function() {
+            this.setupEventListeners();
+            this.showConsentModal();
+        },
+
+        generateUUID: function() {
+            // Generate a UUID in format P-XXXXX
+            var timestamp = Date.now().toString(36);
+            var random = Math.random().toString(36).substr(2, 5).toUpperCase();
+            return 'P-' + timestamp + random;
+        },
+
+        setupEventListeners: function() {
+            var self = this;
+
+            // Consent modal
+            this.consentCheckbox.addEventListener('change', function() {
+                self.consentBtn.disabled = !this.checked;
+            });
+
+            this.consentBtn.addEventListener('click', function() {
+                self.hideConsentModal();
+                self.showQuestionnaireModal();
+            });
+
+            // Questionnaire modal
+            this.questionnaireBtn.addEventListener('click', function() {
+                if (self.validateQuestionnaire()) {
+                    self.saveQuestionnaireData();
+                    self.hideQuestionnaireModal();
+                    self.showCalibrationModal();
+                }
+            });
+
+            // Calibration modal
+            this.testScreamBtn.addEventListener('click', function() {
+                self.startCalibration();
+            });
+
+            this.recalibrateBtn.addEventListener('click', function() {
+                self.resetCalibration();
+                self.startCalibration();
+            });
+
+            this.calibrationStartBtn.addEventListener('click', function() {
+                self.hideCalibrationModal();
+                self.completeModalFlow();
+            });
+        },
+
+        validateQuestionnaire: function() {
+            // Check age range
+            if (!this.ageRange.value) {
+                alert('Please select your age range.');
+                return false;
+            }
+
+            // Check baseline stress
+            var stressSelected = false;
+            for (var i = 0; i < this.baselineStress.length; i++) {
+                if (this.baselineStress[i].checked) {
+                    stressSelected = true;
+                    break;
+                }
+            }
+
+            if (!stressSelected) {
+                alert('Please select your baseline stress level.');
+                return false;
+            }
+
+            return true;
+        },
+
+        saveQuestionnaireData: function() {
+            window.roarParticipantData.ageRange = this.ageRange.value;
+
+            for (var i = 0; i < this.baselineStress.length; i++) {
+                if (this.baselineStress[i].checked) {
+                    window.roarParticipantData.baselineStress = parseInt(this.baselineStress[i].value);
+                    break;
+                }
+            }
+        },
+
+        startCalibration: function() {
+            var self = this;
+
+            if (!window.roarAudioManager) {
+                alert('Error: Audio system not initialized. Please refresh the page.');
+                return;
+            }
+
+            this.isCalibrating = true;
+            this.peakVolume = 0;
+            this.testScreamBtn.disabled = true;
+            this.testScreamBtn.textContent = 'Calibrating... (3s)';
+
+            // Start calibration in audio manager
+            window.roarAudioManager.startCalibration(function(volume) {
+                self.updateCalibrationVisualizer(volume);
+                if (volume > self.peakVolume) {
+                    self.peakVolume = volume;
+                }
+            });
+
+            // End calibration after 3 seconds
+            setTimeout(function() {
+                self.endCalibration();
+            }, 3000);
+        },
+
+        endCalibration: function() {
+            this.isCalibrating = false;
+            window.roarAudioManager.endCalibration(this.peakVolume);
+
+            var threshold = window.roarParticipantData.jumpThreshold;
+
+            this.testScreamBtn.disabled = false;
+            this.testScreamBtn.textContent = 'Test Scream';
+            this.thresholdValueSpan.textContent = threshold.toFixed(2);
+
+            // Show recalibrate button and start game button
+            this.recalibrateBtn.classList.remove('hidden');
+            this.calibrationStartBtn.disabled = false;
+        },
+
+        resetCalibration: function() {
+            this.peakVolume = 0;
+            window.roarParticipantData.jumpThreshold = 0;
+            this.thresholdValueSpan.textContent = '0.00';
+            this.calibrationStartBtn.disabled = true;
+            this.clearCalibrationVisualizer();
+        },
+
+        updateCalibrationVisualizer: function(volume) {
+            this.currentVolumeSpan.textContent = volume.toFixed(2);
+
+            var canvas = this.calibrationCanvas;
+            var ctx = this.calibrationCtx;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw volume bar
+            var barHeight = volume * canvas.height;
+            var barY = canvas.height - barHeight;
+
+            ctx.fillStyle = volume > (this.peakVolume * 0.7) ? '#ff4444' : '#44ff44';
+            ctx.fillRect(0, barY, canvas.width, barHeight);
+
+            // Draw peak line
+            if (this.peakVolume > 0) {
+                var peakY = canvas.height - (this.peakVolume * canvas.height);
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(0, peakY);
+                ctx.lineTo(canvas.width, peakY);
+                ctx.stroke();
+            }
+        },
+
+        clearCalibrationVisualizer: function() {
+            this.calibrationCtx.clearRect(0, 0, this.calibrationCanvas.width, this.calibrationCanvas.height);
+            this.currentVolumeSpan.textContent = '0.00';
+        },
+
+        showConsentModal: function() {
+            this.consentModal.classList.remove('hidden');
+        },
+
+        hideConsentModal: function() {
+            this.consentModal.classList.add('hidden');
+        },
+
+        showQuestionnaireModal: function() {
+            this.questionnaireModal.classList.remove('hidden');
+        },
+
+        hideQuestionnaireModal: function() {
+            this.questionnaireModal.classList.add('hidden');
+        },
+
+        showCalibrationModal: function() {
+            this.calibrationModal.classList.remove('hidden');
+
+            // Initialize audio manager if not already done
+            if (!window.roarAudioManager) {
+                window.roarAudioManager = new RoarAudioManager();
+            }
+        },
+
+        hideCalibrationModal: function() {
+            this.calibrationModal.classList.add('hidden');
+        },
+
+        completeModalFlow: function() {
+            // Signal that modal flow is complete
+            window.roarModalComplete = true;
+
+            // Trigger game initialization
+            if (window.roarGameInstance) {
+                window.roarGameInstance.initGame();
+            }
+        }
+    };
+
+    return RoarModalController;
+})();
+
+/**
+ * RoarAudioManager - Handles microphone input and voice detection
+ * Manages Web Audio API for volume monitoring and audio recording
+ */
+var RoarAudioManager = (function() {
+    'use strict';
+
+    function RoarAudioManager() {
+        this.audioContext = null;
+        this.analyser = null;
+        this.microphone = null;
+        this.mediaRecorder = null;
+        this.audioChunks = [];
+        this.animationId = null;
+        this.isCalibrating = false;
+        this.calibrationCallback = null;
+        this.jumpCallback = null;
+        this.volumeCallback = null;
+        this.lastJumpTime = 0;
+        this.jumpCooldown = 300; // milliseconds
+        this.jumpCount = 0;
+        this.currentVolume = 0;
+
+        this.init();
+    }
+
+    RoarAudioManager.prototype = {
+        init: function() {
+            var self = this;
+
+            // Check for getUserMedia support
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert('Error: Your browser does not support microphone access. Please use Chrome, Firefox, or Edge.');
+                return;
+            }
+
+            // Request microphone access
+            navigator.mediaDevices.getUserMedia({
+                audio: {
+                    echoCancellation: false,
+                    noiseSuppression: false,
+                    autoGainControl: false
+                }
+            })
+            .then(function(stream) {
+                self.setupAudioContext(stream);
+                self.startVolumeMonitoring();
+            })
+            .catch(function(error) {
+                console.error('Microphone access denied:', error);
+                alert('Microphone access is required for this game. Please allow microphone access and refresh the page.');
+            });
+        },
+
+        setupAudioContext: function(stream) {
+            // Create audio context
+            var AudioContext = window.AudioContext || window.webkitAudioContext;
+            this.audioContext = new AudioContext();
+
+            // Create analyser for volume detection
+            this.analyser = this.audioContext.createAnalyser();
+            this.analyser.fftSize = 256;
+            this.analyser.smoothingTimeConstant = 0.8;
+
+            // Connect microphone to analyser
+            this.microphone = this.audioContext.createMediaStreamSource(stream);
+            this.microphone.connect(this.analyser);
+
+            // Setup media recorder for audio capture
+            this.mediaRecorder = new MediaRecorder(stream, {
+                mimeType: 'audio/webm'
+            });
+
+            var self = this;
+            this.mediaRecorder.ondataavailable = function(event) {
+                if (event.data.size > 0) {
+                    self.audioChunks.push(event.data);
+                }
+            };
+        },
+
+        startVolumeMonitoring: function() {
+            var self = this;
+
+            function monitorVolume() {
+                var bufferLength = self.analyser.frequencyBinCount;
+                var dataArray = new Uint8Array(bufferLength);
+                self.analyser.getByteFrequencyData(dataArray);
+
+                // Calculate RMS volume
+                var sum = 0;
+                for (var i = 0; i < bufferLength; i++) {
+                    var normalized = dataArray[i] / 255;
+                    sum += normalized * normalized;
+                }
+                var rms = Math.sqrt(sum / bufferLength);
+                self.currentVolume = rms;
+
+                // Calibration mode
+                if (self.isCalibrating && self.calibrationCallback) {
+                    self.calibrationCallback(rms);
+                }
+
+                // Normal mode - check for jump trigger
+                if (!self.isCalibrating && self.jumpCallback) {
+                    var threshold = window.roarParticipantData.jumpThreshold;
+                    var now = Date.now();
+
+                    if (rms > threshold && (now - self.lastJumpTime) > self.jumpCooldown) {
+                        self.lastJumpTime = now;
+                        self.jumpCount++;
+                        self.jumpCallback(rms);
+                    }
+                }
+
+                // Volume callback for visualization
+                if (self.volumeCallback) {
+                    self.volumeCallback(rms);
+                }
+
+                self.animationId = requestAnimationFrame(monitorVolume);
+            }
+
+            monitorVolume();
+        },
+
+        startCalibration: function(callback) {
+            this.isCalibrating = true;
+            this.calibrationCallback = callback;
+        },
+
+        endCalibration: function(peakVolume) {
+            this.isCalibrating = false;
+            this.calibrationCallback = null;
+
+            // Set threshold at 70% of peak, minimum 0.1
+            var threshold = Math.max(peakVolume * 0.7, 0.1);
+            window.roarParticipantData.jumpThreshold = threshold;
+        },
+
+        onJump: function(callback) {
+            this.jumpCallback = callback;
+        },
+
+        onVolumeChange: function(callback) {
+            this.volumeCallback = callback;
+        },
+
+        startRecording: function() {
+            if (this.mediaRecorder && this.mediaRecorder.state === 'inactive') {
+                this.audioChunks = [];
+                this.mediaRecorder.start();
+            }
+        },
+
+        stopRecording: function() {
+            var self = this;
+            return new Promise(function(resolve) {
+                if (self.mediaRecorder && self.mediaRecorder.state === 'recording') {
+                    self.mediaRecorder.onstop = function() {
+                        var audioBlob = new Blob(self.audioChunks, { type: 'audio/webm' });
+                        resolve(audioBlob);
+                    };
+                    self.mediaRecorder.stop();
+                } else {
+                    resolve(null);
+                }
+            });
+        },
+
+        getJumpCount: function() {
+            return this.jumpCount;
+        },
+
+        getCurrentVolume: function() {
+            return this.currentVolume;
+        },
+
+        destroy: function() {
+            if (this.animationId) {
+                cancelAnimationFrame(this.animationId);
+            }
+            if (this.audioContext) {
+                this.audioContext.close();
+            }
+        }
+    };
+
+    return RoarAudioManager;
+})();
+
+/**
+ * RoarVolumeBar - Real-time volume visualizer during gameplay
+ * Shows current volume and jump threshold as a vertical bar
+ */
+var RoarVolumeBar = (function() {
+    'use strict';
+
+    function RoarVolumeBar(canvas, threshold) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.threshold = threshold;
+        this.currentVolume = 0;
+        this.isVisible = false;
+    }
+
+    RoarVolumeBar.prototype = {
+        show: function() {
+            this.isVisible = true;
+            this.canvas.parentElement.classList.remove('hidden');
+        },
+
+        hide: function() {
+            this.isVisible = false;
+            this.canvas.parentElement.classList.add('hidden');
+        },
+
+        update: function(volume) {
+            if (!this.isVisible) {
+                return;
+            }
+
+            this.currentVolume = volume;
+            this.draw();
+        },
+
+        draw: function() {
+            var width = this.canvas.width;
+            var height = this.canvas.height;
+
+            // Clear canvas
+            this.ctx.clearRect(0, 0, width, height);
+
+            // Calculate heights
+            var thresholdY = height - (this.threshold * height);
+            var volumeY = height - (this.currentVolume * height);
+
+            // Draw green zone (0 to threshold)
+            this.ctx.fillStyle = '#44ff44';
+            this.ctx.fillRect(0, thresholdY, width, height - thresholdY);
+
+            // Draw red zone (threshold to 1.0)
+            this.ctx.fillStyle = '#ff4444';
+            this.ctx.fillRect(0, 0, width, thresholdY);
+
+            // Draw threshold line
+            this.ctx.strokeStyle = '#000';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, thresholdY);
+            this.ctx.lineTo(width, thresholdY);
+            this.ctx.stroke();
+
+            // Draw current volume indicator
+            this.ctx.strokeStyle = '#000';
+            this.ctx.lineWidth = 3;
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, volumeY);
+            this.ctx.lineTo(width, volumeY);
+            this.ctx.stroke();
+        },
+
+        setThreshold: function(threshold) {
+            this.threshold = threshold;
+        }
+    };
+
+    return RoarVolumeBar;
+})();
+
+/**
+ * RoarDataCollector - Captures session statistics
+ */
+var RoarDataCollector = (function() {
+    'use strict';
+
+    function RoarDataCollector() {
+        this.sessionStartTime = null;
+        this.sessionData = null;
+    }
+
+    RoarDataCollector.prototype = {
+        startSession: function() {
+            this.sessionStartTime = new Date().toISOString();
+        },
+
+        captureGameStats: function(runner) {
+            var sessionEndTime = new Date();
+            var sessionStartTime = new Date(this.sessionStartTime);
+            var duration = (sessionEndTime - sessionStartTime) / 1000; // seconds
+
+            this.sessionData = {
+                participant: {
+                    uuid: window.roarParticipantData.uuid,
+                    ageRange: window.roarParticipantData.ageRange,
+                    baselineStress: window.roarParticipantData.baselineStress,
+                    jumpThreshold: window.roarParticipantData.jumpThreshold
+                },
+                gameStats: {
+                    score: Math.ceil(runner.distanceRan),
+                    distanceRan: runner.distanceRan,
+                    duration: parseFloat(duration.toFixed(2)),
+                    jumpCount: window.roarAudioManager ? window.roarAudioManager.getJumpCount() : 0,
+                    timestamp: sessionEndTime.toISOString(),
+                    gameOverReason: 'collision'
+                },
+                metadata: {
+                    userAgent: navigator.userAgent,
+                    screenResolution: window.screen.width + 'x' + window.screen.height,
+                    gameVersion: '1.0.0'
+                }
+            };
+
+            return this.sessionData;
+        },
+
+        getSessionData: function() {
+            return this.sessionData;
+        }
+    };
+
+    return RoarDataCollector;
+})();
+
+/**
+ * RoarDataExporter - Uploads data to server with fallback to ZIP download
+ */
+var RoarDataExporter = (function() {
+    'use strict';
+
+    function RoarDataExporter() {
+        this.serverEndpoint = '/api/submit-session';
+        this.maxRetries = 3;
+        this.retryDelay = 1000; // milliseconds
+    }
+
+    RoarDataExporter.prototype = {
+        exportData: function(sessionData, audioBlob) {
+            var self = this;
+
+            // Try server upload first
+            this.uploadToServer(sessionData, audioBlob, 0)
+                .then(function(response) {
+                    console.log('Data uploaded successfully:', response);
+                    self.showSuccessMessage();
+                })
+                .catch(function(error) {
+                    console.error('Upload failed after retries:', error);
+                    self.showErrorMessage();
+                    // Fallback to ZIP download
+                    self.downloadAsZip(sessionData, audioBlob);
+                });
+        },
+
+        uploadToServer: function(sessionData, audioBlob, attempt) {
+            var self = this;
+
+            return new Promise(function(resolve, reject) {
+                // Create FormData
+                var formData = new FormData();
+                formData.append('sessionData', JSON.stringify(sessionData, null, 2));
+
+                if (audioBlob) {
+                    formData.append('audioRecording', audioBlob, 'recording.webm');
+                }
+
+                // Send POST request
+                fetch(self.serverEndpoint, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(function(response) {
+                    if (!response.ok) {
+                        throw new Error('Server returned ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(function(data) {
+                    if (data.success) {
+                        resolve(data);
+                    } else {
+                        throw new Error(data.message || 'Upload failed');
+                    }
+                })
+                .catch(function(error) {
+                    // Retry logic
+                    if (attempt < self.maxRetries - 1) {
+                        console.log('Upload attempt ' + (attempt + 1) + ' failed, retrying...');
+                        setTimeout(function() {
+                            self.uploadToServer(sessionData, audioBlob, attempt + 1)
+                                .then(resolve)
+                                .catch(reject);
+                        }, self.retryDelay * Math.pow(2, attempt));
+                    } else {
+                        reject(error);
+                    }
+                });
+            });
+        },
+
+        downloadAsZip: function(sessionData, audioBlob) {
+            // Check if JSZip is available
+            if (typeof JSZip === 'undefined') {
+                console.error('JSZip library not loaded');
+                alert('Error: Cannot create download file. Please contact the researcher.');
+                return;
+            }
+
+            var zip = new JSZip();
+
+            // Add JSON file
+            zip.file('session-data.json', JSON.stringify(sessionData, null, 2));
+
+            // Add audio file if available
+            if (audioBlob) {
+                zip.file('recording.webm', audioBlob);
+            }
+
+            // Generate ZIP and download
+            zip.generateAsync({ type: 'blob' })
+                .then(function(zipBlob) {
+                    var fileName = 'roar-session-' + sessionData.participant.uuid + '.zip';
+                    var link = document.createElement('a');
+                    link.href = URL.createObjectURL(zipBlob);
+                    link.download = fileName;
+                    link.click();
+
+                    console.log('Data downloaded as ZIP:', fileName);
+                })
+                .catch(function(error) {
+                    console.error('ZIP generation failed:', error);
+                    alert('Error: Failed to create download file. Please contact the researcher.');
+                });
+        },
+
+        showSuccessMessage: function() {
+            alert('Session data uploaded successfully! Thank you for participating.');
+        },
+
+        showErrorMessage: function() {
+            alert('Unable to upload to server. Downloading data locally instead...');
+        }
+    };
+
+    return RoarDataExporter;
+})();
+
+// =====================================================
+// Initialize Roar Runner on document load
+// =====================================================
+
 function onDocumentLoad() {
-    new Runner('.interstitial-wrapper');
+    // Create runner instance but don't start yet
+    window.roarGameInstance = new Runner('.interstitial-wrapper');
+
+    // Initialize modal controller
+    window.roarModalController = new RoarModalController();
 }
 
 document.addEventListener('DOMContentLoaded', onDocumentLoad);

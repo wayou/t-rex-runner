@@ -6,12 +6,109 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0,maximum-scale=1.0, user-scalable=no">
     <title >chrome easter egg: t-rex runner</title>
     <link rel="stylesheet" href="index.css">
-    <link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet"> 
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="index.js"></script>
 </head>
 
 <body id="t" class="offline">
-    <div id="messageBox" class="sendmessage">
+    <!-- Roar Runner Modals -->
+    <div id="roar-modal-overlay" class="roar-modal-overlay">
+        <!-- Consent Modal -->
+        <div id="consent-modal" class="roar-modal">
+            <h2>Research Consent Form</h2>
+            <div class="consent-content">
+                <p><strong>Study Title:</strong> Voice-Controlled Stress Response During Gameplay</p>
+                <p><strong>Principal Investigator:</strong> [To be added]</p>
+                <p><strong>Purpose:</strong> This study investigates stress responses during voice-controlled gameplay. We will record audio samples to analyze voice patterns under varying levels of difficulty.</p>
+                <p><strong>Procedure:</strong> You will play a voice-controlled game where you make sounds to jump over obstacles. Your audio will be recorded throughout the session. The game typically lasts 30-60 seconds.</p>
+                <p><strong>Data Collection:</strong> We will collect:</p>
+                <ul>
+                    <li>Audio recording of your voice during gameplay</li>
+                    <li>Basic demographic information (age range)</li>
+                    <li>Self-reported baseline stress level</li>
+                    <li>Game performance metrics (score, duration, jumps)</li>
+                </ul>
+                <p><strong>Confidentiality:</strong> Your data will be assigned a random participant ID. No personally identifiable information will be collected. Audio recordings will be used solely for research purposes.</p>
+                <p><strong>Risks:</strong> Minimal risk. You may experience mild frustration or excitement during gameplay.</p>
+                <p><strong>Benefits:</strong> Contributing to research on human-computer interaction and stress responses.</p>
+                <p><strong>Voluntary Participation:</strong> Your participation is completely voluntary. You may withdraw at any time by closing this browser window.</p>
+                <p><strong>Questions:</strong> If you have questions about this study, please contact [To be added].</p>
+                <p><em>Note: This is placeholder text. IRB-approved consent language should be added before study deployment.</em></p>
+            </div>
+            <label class="consent-checkbox">
+                <input type="checkbox" id="consent-checkbox">
+                <span>I have read and understood the above information and consent to participate in this study</span>
+            </label>
+            <button id="consent-continue" class="roar-btn" disabled>Continue</button>
+        </div>
+
+        <!-- Questionnaire Modal -->
+        <div id="questionnaire-modal" class="roar-modal hidden">
+            <h2>Participant Information</h2>
+            <div class="form-group">
+                <label>Participant ID:</label>
+                <input type="text" id="participant-uuid" readonly class="readonly-input">
+                <small>This ID has been automatically generated for you</small>
+            </div>
+            <div class="form-group">
+                <label>Age Range:</label>
+                <select id="age-range" required>
+                    <option value="">Select your age range...</option>
+                    <option value="18-24">18-24</option>
+                    <option value="25-34">25-34</option>
+                    <option value="35-44">35-44</option>
+                    <option value="45-54">45-54</option>
+                    <option value="55+">55+</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Current Stress Level (1 = Not Stressed, 5 = Very Stressed):</label>
+                <div class="stress-scale">
+                    <label class="stress-option">
+                        <input type="radio" name="baseline-stress" value="1" required>
+                        <span>1</span>
+                    </label>
+                    <label class="stress-option">
+                        <input type="radio" name="baseline-stress" value="2">
+                        <span>2</span>
+                    </label>
+                    <label class="stress-option">
+                        <input type="radio" name="baseline-stress" value="3">
+                        <span>3</span>
+                    </label>
+                    <label class="stress-option">
+                        <input type="radio" name="baseline-stress" value="4">
+                        <span>4</span>
+                    </label>
+                    <label class="stress-option">
+                        <input type="radio" name="baseline-stress" value="5">
+                        <span>5</span>
+                    </label>
+                </div>
+            </div>
+            <button type="button" id="questionnaire-continue" class="roar-btn">Continue to Calibration</button>
+        </div>
+
+        <!-- Calibration Modal -->
+        <div id="calibration-modal" class="roar-modal hidden">
+            <h2>Microphone Calibration</h2>
+            <p>We need to calibrate your microphone to detect your voice properly.</p>
+            <p class="calibration-instruction"><strong>Instructions:</strong> Click "Test Scream" and make a loud sound for 3 seconds. We'll set your jump threshold based on your peak volume.</p>
+            <div class="volume-visualizer">
+                <canvas id="calibration-canvas" width="400" height="100"></canvas>
+            </div>
+            <div class="calibration-controls">
+                <p class="volume-display">Current volume: <span id="current-volume">0.00</span></p>
+                <p class="threshold-display">Jump threshold set to: <span id="threshold-value">0.00</span></p>
+                <button id="test-scream-btn" class="roar-btn">Test Scream</button>
+                <button id="recalibrate-btn" class="roar-btn-secondary hidden">Recalibrate</button>
+            </div>
+            <button id="calibration-start" class="roar-btn" disabled>Start Game</button>
+        </div>
+    </div>
+
+    <div id="messageBox" class="sendmessage hidden">
          <h1 style="text-align: center;font-family: 'Open Sans', sans-serif;">Press Space to start</h1>
          <div class="niokbutton" onclick="okbuttonsend()"></div>
     </div>
@@ -29,6 +126,11 @@
             </template>
         </div>
     </div>
+
+    <!-- Roar Runner Volume Bar -->
+    <div id="volume-bar-container" class="volume-bar-container hidden">
+        <canvas id="volume-bar" width="30" height="150"></canvas>
+    </div>
 </body>
 
 <script>
@@ -40,5 +142,5 @@
     }
 };
 </script>
-    
+
 </html>

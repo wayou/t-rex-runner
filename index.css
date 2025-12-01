@@ -163,3 +163,194 @@ html, body {
   transition: transform 250ms cubic-bezier(0.4, 0, 1, 1) 400ms;
   z-index: 2;
 }
+
+/* Roar Runner Modal Styles */
+
+.roar-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.roar-modal {
+  background: white;
+  border-radius: 8px;
+  padding: 30px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.roar-modal h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 24px;
+  color: #2b2b2b;
+}
+
+.consent-content {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  padding: 15px;
+  margin-bottom: 20px;
+  background: #f9f9f9;
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+.consent-checkbox {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  cursor: pointer;
+}
+
+.consent-checkbox input[type="checkbox"] {
+  margin-right: 10px;
+  margin-top: 4px;
+  cursor: pointer;
+}
+
+.consent-checkbox label {
+  cursor: pointer;
+  user-select: none;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #2b2b2b;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.readonly-input {
+  background: #f0f0f0;
+  color: #666;
+  cursor: not-allowed;
+}
+
+.stress-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.stress-option {
+  flex: 1;
+  text-align: center;
+  padding: 10px;
+}
+
+.stress-option input[type="radio"] {
+  margin-bottom: 5px;
+  cursor: pointer;
+}
+
+.stress-option label {
+  display: block;
+  font-size: 12px;
+  color: #666;
+  cursor: pointer;
+}
+
+.roar-btn {
+  background: #535353;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.2s;
+}
+
+.roar-btn:hover {
+  background: #2b2b2b;
+}
+
+.roar-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.roar-btn-secondary {
+  background: #f0f0f0;
+  color: #2b2b2b;
+  border: 1px solid #ddd;
+  padding: 12px 24px;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 10px;
+  transition: background 0.2s;
+}
+
+.roar-btn-secondary:hover {
+  background: #e0e0e0;
+}
+
+.volume-visualizer {
+  background: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 20px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.volume-visualizer canvas {
+  display: block;
+  margin: 0 auto 15px;
+  border: 1px solid #ddd;
+  background: white;
+}
+
+.volume-visualizer p {
+  margin: 5px 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.volume-visualizer strong {
+  color: #2b2b2b;
+}
+
+/* Volume Bar (In-Game) */
+
+.volume-bar-container {
+  position: absolute;
+  right: 10px;
+  top: 35px;
+  z-index: 10;
+}
+
+.volume-bar-container canvas {
+  border: 2px solid #535353;
+  background: white;
+}
