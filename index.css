@@ -163,3 +163,39 @@ html, body {
   transition: transform 250ms cubic-bezier(0.4, 0, 1, 1) 400ms;
   z-index: 2;
 }
+
+/* ==============================
+   Image Waterfall Overlay (Game Over)
+   ============================== */
+
+#waterfall-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 10;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.wf-item {
+  position: absolute;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 12px rgba(233, 69, 96, 0.25);
+  will-change: transform, opacity;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+.wf-item img {
+  display: block;
+  width: 140px;
+  height: auto;
+  min-height: 90px;
+  background: #2a2a3e;
+}

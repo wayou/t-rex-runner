@@ -6,7 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0,maximum-scale=1.0, user-scalable=no">
     <title >chrome easter egg: t-rex runner</title>
     <link rel="stylesheet" href="index.css">
-    <link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet"> 
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="index.js"></script>
 </head>
 
@@ -29,6 +30,9 @@
             </template>
         </div>
     </div>
+
+    <!-- Image Waterfall Overlay (shown on Game Over) -->
+    <div id="waterfall-overlay"></div>
 </body>
 
 <script>
@@ -40,5 +44,111 @@
     }
 };
 </script>
-    
+
+<script>
+(function() {
+    var overlay = document.getElementById('waterfall-overlay');
+    var imageCount = 30;
+    var activeTimeline = null;
+    var spawnInterval = null;
+
+    function getRandomImageUrl() {
+        var w = 120 + Math.floor(Math.random() * 100);
+        var h = 100 + Math.floor(Math.random() * 120);
+        var seed = Math.floor(Math.random() * 10000);
+        return 'https://picsum.photos/seed/' + seed + '/' + w + '/' + h;
+    }
+
+    function startWaterfall() {
+        overlay.style.display = 'block';
+        // Fade in the dark overlay background
+        gsap.fromTo(overlay, { opacity: 0 }, { opacity: 1, duration: 0.6, ease: 'power2.out' });
+
+        var count = 0;
+        var vw = window.innerWidth;
+        var vh = window.innerHeight;
+
+        // Spawn images in staggered waves
+        spawnInterval = setInterval(function() {
+            if (count >= imageCount) {
+                clearInterval(spawnInterval);
+                spawnInterval = null;
+                return;
+            }
+
+            var item = document.createElement('div');
+            item.className = 'wf-item';
+
+            var img = document.createElement('img');
+            img.src = getRandomImageUrl();
+            img.alt = '';
+            item.appendChild(img);
+            overlay.appendChild(item);
+
+            // Random horizontal position
+            var startX = Math.random() * (vw - 160);
+            // Random slight rotation
+            var rot = -25 + Math.random() * 50;
+            // Random size variation
+            var scale = 0.6 + Math.random() * 0.6;
+            // Fall distance (above viewport to below)
+            var startY = -200 - Math.random() * 150;
+            var endY = vh + 100 + Math.random() * 200;
+            // Duration varies for depth effect
+            var dur = 2.5 + Math.random() * 3;
+
+            gsap.set(item, {
+                x: startX,
+                y: startY,
+                rotation: rot,
+                scale: scale,
+                opacity: 0
+            });
+
+            gsap.to(item, {
+                y: endY,
+                rotation: rot + (-20 + Math.random() * 40),
+                opacity: 1,
+                duration: dur,
+                ease: 'power1.in',
+                delay: Math.random() * 0.3
+            });
+
+            // Subtle horizontal sway
+            gsap.to(item, {
+                x: startX + (-60 + Math.random() * 120),
+                duration: dur,
+                ease: 'sine.inOut'
+            });
+
+            count++;
+        }, 120);
+    }
+
+    function clearWaterfall() {
+        if (spawnInterval) {
+            clearInterval(spawnInterval);
+            spawnInterval = null;
+        }
+        gsap.to(overlay, {
+            opacity: 0,
+            duration: 0.3,
+            onComplete: function() {
+                overlay.style.display = 'none';
+                // Remove all spawned images
+                while (overlay.firstChild) {
+                    overlay.removeChild(overlay.firstChild);
+                }
+            }
+        });
+    }
+
+    // Expose globally so index.js can call it
+    window.imageWaterfall = {
+        start: startWaterfall,
+        clear: clearWaterfall
+    };
+})();
+</script>
+
 </html>

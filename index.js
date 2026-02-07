@@ -804,6 +804,11 @@
 
             // Reset the time clock.
             this.time = getTimeStamp();
+
+            // Trigger image waterfall effect.
+            if (window.imageWaterfall) {
+                window.imageWaterfall.start();
+            }
         },
 
         stop: function () {
@@ -839,6 +844,12 @@
                 this.tRex.reset();
                 this.playSound(this.soundFx.BUTTON_PRESS);
                 this.invert(true);
+
+                // Clear waterfall on restart.
+                if (window.imageWaterfall) {
+                    window.imageWaterfall.clear();
+                }
+
                 this.update();
             }
         },
