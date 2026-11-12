@@ -1,6 +1,6 @@
 # Aanpassingen aan de T-Rex Runner
 
-Het origineel is het dinospel uit Google Chrome dat je krijgt als je geen internet hebt. Ik heb het spel op vijf punten aangepast. De wijzigingen staan in `index.js` en `index.css` en zijn in de code te vinden met de zoekterm `AANPASSING`.
+Het origineel is het dinospel uit Google Chrome dat je krijgt als je geen internet hebt. Ik heb het spel op zes punten aangepast. De wijzigingen staan in `index.js`, `index.css` en `index.html` en zijn in de code te vinden met de zoekterm `AANPASSING`.
 
 | # | Aanpassing | Wat het doet |
 |---|------------|--------------|
@@ -9,6 +9,7 @@ Het origineel is het dinospel uit Google Chrome dat je krijgt als je geen intern
 | 3 | Levens | Je hebt 3 levens. Pas na 3 botsingen is het game over |
 | 4 | Opgeslagen highscore | Je highscore blijft bewaard, ook nadat je de pagina sluit |
 | 5 | Achtergrondkleur | Lichtblauwe lucht in plaats van een witte achtergrond |
+| 6 | Moeilijkheidsmenu | Kies tussen Makkelijk, Normaal en Moeilijk |
 
 ---
 
@@ -120,6 +121,33 @@ html, body {
 
 ---
 
+## Aanpassing 6: menu met drie moeilijkheden
+
+**Idee:** voor het spelen, en na elke game over, kies je in een menu hoe moeilijk het spel is. Dat kan door op een knop te klikken of door op **1**, **2** of **3** te drukken.
+
+| Instelling | Makkelijk | Normaal | Moeilijk | Betekenis |
+|---|---|---|---|---|
+| `SPEED` | 5 | 6 | 8 | beginsnelheid |
+| `MAX_SPEED` | 10 | 13 | 16 | topsnelheid |
+| `ACCELERATION` | 0,0005 | 0,001 | 0,002 | hoeveel sneller per frame |
+| `GAP_COEFFICIENT` | 0,9 | 0,6 | 0,45 | ruimte tussen obstakels (groter = meer ruimte) |
+| `LIVES` | 5 | 3 | 1 | aantal levens |
+
+"Normaal" heeft dezelfde snelheden als het originele spel.
+
+**Hoe het werkt:**
+
+- **HTML (`index.html`):** het menu is een `<div id="menu">` met drie knoppen. Elke knop heeft een `data-moeilijkheid`-attribuut, bijvoorbeeld `data-moeilijkheid="moeilijk"`. JavaScript leest dat attribuut uit met `button.dataset.moeilijkheid`. Het oude berichtje "Press Space to start" en het losse scriptje dat het verborg, zijn weggehaald.
+- **Gegevens (`Runner.difficulties`):** de drie moeilijkheden staan in één object. Elke moeilijkheid is zelf weer een object met de waarden uit de tabel. Een vierde moeilijkheid toevoegen is daardoor makkelijk: je voegt één regel toe aan het object en één knop aan de HTML.
+- **`setDifficulty(name)`:** kopieert de waarden naar `this.config`, het object waar het spel zijn instellingen uit leest. De functie zet ook de snelheid, de ruimte tussen obstakels (`horizon.gapCoefficient`) en de levens meteen goed. Bovenaan staat een **controle**: `if (!settings || this.playing) return;`. Tijdens het spelen kun je de moeilijkheid dus niet veranderen, anders zou je midden in een potje kunnen wisselen.
+- **Events:** `initMenu()` koppelt aan elke knop een `click`-*event listener* (een functie die wordt uitgevoerd als er op de knop geklikt wordt). In `onKeyDown` vertaalt `Runner.difficultyKeys` de toetscodes 49, 50 en 51 (de toetsen 1, 2 en 3) naar een moeilijkheid.
+- **`blur()`:** na een klik heeft de knop de *focus* (hij is "geselecteerd"). Spatie zou dan de knop nog een keer indrukken in plaats van te springen. `blur()` haalt die focus weg.
+- **Tonen en verbergen:** `showMenu(true/false)` zet de CSS-class `verborgen` (met `display: none`) aan of uit. Het menu verdwijnt als het spel start of herstart, en komt terug bij game over.
+- **Highscore per moeilijkheid:** de naam in `localStorage` hangt nu af van de moeilijkheid, bijvoorbeeld `t-rex-highscore-moeilijk`. Zo kun je een score op Makkelijk niet vergelijken met een score op Moeilijk.
+- **CSS:** het menu heeft `position: fixed` en `bottom: 16px`. Het zweeft dus onderaan het scherm en bedekt de score en "GAME OVER" niet. Bij het testen stond het eerst bovenaan, en toen lag het precies over de score heen.
+
+---
+
 ## Testen
 
 Ik heb het spel automatisch getest in een browser (Playwright, Chromium):
@@ -132,8 +160,12 @@ Ik heb het spel automatisch getest in een browser (Playwright, Chromium):
 | Plafond: laagste y-positie | 0 (niet meer boven het scherm) ✔ |
 | Levens: 3 → 2 → 1 → game over | ✔ |
 | Highscore na herladen pagina | nog steeds aanwezig ✔ |
+| Menu: klik op Moeilijk | 1 leven, snelheid 8, ruimte 0,45 ✔ |
+| Menu verdwijnt bij start en komt terug bij game over | ✔ |
+| Toets 1 na game over | Makkelijk: 5 levens, snelheid 5 ✔ |
+| Highscore apart per moeilijkheid | `t-rex-highscore-moeilijk` ✔ |
 | JavaScript-fouten | geen ✔ |
 
 ## Spelen
 
-Open `index.html` in een browser. Druk op **spatie** of **pijltje omhoog** om te springen (twee keer voor een dubbele sprong) en op **pijltje omlaag** om te bukken.
+Open `index.html` in een browser. Kies eerst een moeilijkheid (klik, of druk op 1, 2 of 3). Druk op **spatie** of **pijltje omhoog** om te springen (twee keer voor een dubbele sprong) en op **pijltje omlaag** om te bukken.
