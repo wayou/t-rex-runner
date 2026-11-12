@@ -2,11 +2,18 @@
  * Use of this source code is governed by a BSD-style license that can be
  * found in the LICENSE file. */
 
+/* AANPASSING 5: achtergrondkleur. Verander de kleurcode hieronder om een
+ * andere kleur te krijgen (bijvoorbeeld #ffe4b5 voor zandkleur). */
+:root {
+  --achtergrond: #bfe6ff; /* lichtblauw, als een lucht */
+}
+
 html, body {
   padding: 0;
   margin: 0;
   width: 100%;
   height: 100%;
+  background-color: var(--achtergrond);
 }
 
 .icon {
