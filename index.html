@@ -11,9 +11,16 @@
 </head>
 
 <body id="t" class="offline">
-    <div id="messageBox" class="sendmessage">
-         <h1 style="text-align: center;font-family: 'Open Sans', sans-serif;">Press Space to start</h1>
-         <div class="niokbutton" onclick="okbuttonsend()"></div>
+    <!-- AANPASSING 6: menu om de moeilijkheid te kiezen -->
+    <div id="menu" class="menu">
+        <h1>Kies je moeilijkheid</h1>
+        <div class="menu-knoppen">
+            <button class="menu-knop" data-moeilijkheid="makkelijk">1. Makkelijk</button>
+            <button class="menu-knop" data-moeilijkheid="normaal">2. Normaal</button>
+            <button class="menu-knop" data-moeilijkheid="moeilijk">3. Moeilijk</button>
+        </div>
+        <p id="menu-info" class="menu-info"></p>
+        <p class="menu-start">Druk op <b>spatie</b> om te starten</p>
     </div>
     <div id="main-frame-error" class="interstitial-wrapper">
         <div id="main-content">
@@ -31,14 +38,5 @@
     </div>
 </body>
 
-<script>
-    document.onkeydown = function(evt) {
-    evt = evt || window.event;
-    if (evt.keyCode == 32) {
-        var box = document.getElementById("messageBox");
-        box.style.visibility="hidden";
-    }
-};
-</script>
     
 </html>
