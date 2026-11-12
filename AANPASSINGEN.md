@@ -1,6 +1,6 @@
 # Aanpassingen aan de T-Rex Runner
 
-Het origineel is het dinospel uit Google Chrome dat je krijgt als je geen internet hebt. Ik heb het spel op vier punten aangepast. Alle wijzigingen staan in `index.js` en zijn in de code te vinden met de zoekterm `AANPASSING`.
+Het origineel is het dinospel uit Google Chrome dat je krijgt als je geen internet hebt. Ik heb het spel op vijf punten aangepast. De wijzigingen staan in `index.js` en `index.css` en zijn in de code te vinden met de zoekterm `AANPASSING`.
 
 | # | Aanpassing | Wat het doet |
 |---|------------|--------------|
@@ -8,6 +8,7 @@ Het origineel is het dinospel uit Google Chrome dat je krijgt als je geen intern
 | 2 | Dubbele sprong | In de lucht kun je nog één keer springen |
 | 3 | Levens | Je hebt 3 levens. Pas na 3 botsingen is het game over |
 | 4 | Opgeslagen highscore | Je highscore blijft bewaard, ook nadat je de pagina sluit |
+| 5 | Achtergrondkleur | Lichtblauwe lucht in plaats van een witte achtergrond |
 
 ---
 
@@ -96,6 +97,26 @@ if (this.lives > 0) {
 - `saveHighScore()` gebruikt `localStorage.setItem(...)` bij game over, als je een nieuwe highscore hebt.
 - `loadHighScore()` leest met `localStorage.getItem(...)` de score bij het opstarten. `localStorage` slaat alles op als tekst, dus met `parseInt` wordt het weer een getal.
 - Beide staan in een `try { } catch { }`. In sommige browsers (bijvoorbeeld in privémodus) is `localStorage` geblokkeerd. Het spel crasht dan niet, maar de highscore wordt dan niet bewaard.
+
+---
+
+## Aanpassing 5: achtergrondkleur
+
+**Idee:** een lichtblauwe lucht in plaats van een witte achtergrond.
+
+**Hoe:** dit staat in `index.css`, niet in JavaScript. Het canvas waarop het spel wordt getekend is doorzichtig: alleen de dino, de grond en de obstakels worden erop getekend. Daarom is het genoeg om de achtergrond van de pagina (`body`) een kleur te geven:
+
+```css
+:root {
+  --achtergrond: #bfe6ff;
+}
+
+html, body {
+  background-color: var(--achtergrond);
+}
+```
+
+`--achtergrond` is een **CSS-variabele**: je definieert de kleur één keer en gebruikt hem met `var(...)`. Wil je een andere kleur, dan hoef je alleen `#bfe6ff` te veranderen. Dit is een hexadecimale kleurcode: twee tekens voor rood, groen en blauw, elk van `00` (niets) tot `ff` (maximaal). `bf e6 ff` is dus weinig rood, veel groen en volledig blauw: lichtblauw.
 
 ---
 
