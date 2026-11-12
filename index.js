@@ -35,7 +35,11 @@
         this.distanceMeter = null;
         this.distanceRan = 0;
 
-        this.highestScore = 0;
+        this.highestScore = this.loadHighScore(); // AANPASSING 4
+
+        // AANPASSING 3: levens en onkwetsbaarheidstimer.
+        this.lives = this.config.LIVES;
+        this.invincibleTimer = 0;
 
         this.time = 0;
         this.runningTime = 0;
@@ -111,7 +115,9 @@
         GAMEOVER_CLEAR_TIME: 750,
         GAP_COEFFICIENT: 0.6,
         GRAVITY: 0.6,
-        INITIAL_JUMP_VELOCITY: 100,
+        // AANPASSING 1: sprongsnelheid. Deze waarde werd eerst nergens gebruikt;
+        // nu wordt hij in init() echt aan de dino doorgegeven (zie setJumpVelocity).
+        INITIAL_JUMP_VELOCITY: 12,
         INVERT_FADE_DURATION: 12000,
         INVERT_DISTANCE: 700,
         MAX_BLINK_COUNT: 3,
@@ -125,7 +131,15 @@
         SPEED: 6,
         SPEED_DROP_COEFFICIENT: 3,
         ARCADE_MODE_INITIAL_TOP_POSITION: 35,
-        ARCADE_MODE_TOP_POSITION_PERCENT: 0.1
+        ARCADE_MODE_TOP_POSITION_PERCENT: 0.1,
+        // AANPASSING 2: dubbele sprong. Aantal extra sprongen in de lucht.
+        MAX_AIR_JUMPS: 1,
+        // AANPASSING 3: levens. Aantal levens en hoe lang (ms) je na een botsing
+        // onkwetsbaar bent.
+        LIVES: 3,
+        INVINCIBLE_TIME: 1500,
+        // AANPASSING 4: naam waaronder de highscore in localStorage wordt bewaard.
+        HIGHSCORE_KEY: 't-rex-highscore'
     };
 
 
@@ -381,6 +395,14 @@
             // Draw t-rex
             this.tRex = new Trex(this.canvas, this.spriteDef.TREX);
 
+            // AANPASSING 1: geef de sprongsnelheid uit de config door aan de dino.
+            this.tRex.setJumpVelocity(this.config.INITIAL_JUMP_VELOCITY);
+
+            // AANPASSING 4: toon de opgeslagen highscore meteen bij het starten.
+            if (this.highestScore > 0) {
+                this.distanceMeter.setHighScore(this.highestScore);
+            }
+
             this.outerContainerEl.appendChild(this.containerEl);
 
             if (IS_MOBILE) {
@@ -559,8 +581,15 @@
                         this.inverted);
                 }
 
-                // Check for collisions.
-                var collision = hasObstacles &&
+                // AANPASSING 3: tel de onkwetsbaarheidstijd af.
+                if (this.invincibleTimer > 0) {
+                    this.invincibleTimer -= deltaTime;
+                }
+                // Laat de dino knipperen zolang hij onkwetsbaar is.
+                this.tRex.blinking = this.invincibleTimer > 0;
+
+                // Check for collisions (niet als de dino onkwetsbaar is).
+                var collision = hasObstacles && this.invincibleTimer <= 0 &&
                     checkForCollision(this.horizon.obstacles[0], this.tRex);
 
                 if (!collision) {
@@ -570,7 +599,14 @@
                         this.currentSpeed += this.config.ACCELERATION;
                     }
                 } else {
-                    this.gameOver();
+                    // AANPASSING 3: eerst een leven kwijt, pas bij 0 levens game over.
+                    this.lives--;
+                    if (this.lives > 0) {
+                        this.loseLife();
+                    } else {
+                        this.tRex.blinking = false;
+                        this.gameOver();
+                    }
                 }
 
                 var playAchievementSound = this.distanceMeter.update(deltaTime,
@@ -578,6 +614,11 @@
 
                 if (playAchievementSound) {
                     this.playSound(this.soundFx.SCORE);
+                }
+
+                // AANPASSING 3: teken de resterende levens linksboven.
+                if (!this.crashed) {
+                    this.drawLives();
                 }
 
                 // Night mode.
@@ -692,6 +733,12 @@
                     if (!this.tRex.jumping && !this.tRex.ducking) {
                         this.playSound(this.soundFx.BUTTON_PRESS);
                         this.tRex.startJump(this.currentSpeed);
+                    } else if (this.tRex.jumping && !e.repeat &&
+                        this.tRex.airJumps < this.config.MAX_AIR_JUMPS) {
+                        // AANPASSING 2: dubbele sprong. Alleen bij een nieuwe
+                        // toetsdruk (e.repeat = toets ingedrukt gehouden).
+                        this.playSound(this.soundFx.BUTTON_PRESS);
+                        this.tRex.airJump(this.currentSpeed);
                     }
                 }
 
@@ -800,10 +847,63 @@
             if (this.distanceRan > this.highestScore) {
                 this.highestScore = Math.ceil(this.distanceRan);
                 this.distanceMeter.setHighScore(this.highestScore);
+                this.saveHighScore(this.highestScore); // AANPASSING 4
             }
 
             // Reset the time clock.
             this.time = getTimeStamp();
+        },
+
+        /**
+         * AANPASSING 3: de dino raakt een obstakel maar heeft nog levens over.
+         * Het geraakte obstakel verdwijnt en de dino is even onkwetsbaar.
+         */
+        loseLife: function () {
+            this.playSound(this.soundFx.HIT);
+            vibrate(100);
+            this.horizon.removeFirstObstacle();
+            this.invincibleTimer = this.config.INVINCIBLE_TIME;
+        },
+
+        /**
+         * AANPASSING 3: teken een hartje per leven linksboven in het canvas.
+         */
+        drawLives: function () {
+            var ctx = this.canvasCtx;
+            ctx.save();
+            ctx.fillStyle = '#535353';
+            ctx.font = '14px Arial';
+            ctx.textBaseline = 'top';
+            var hearts = '';
+            for (var i = 0; i < this.lives; i++) {
+                hearts += '\u2665 ';
+            }
+            ctx.fillText(hearts, 5, 3);
+            ctx.restore();
+        },
+
+        /**
+         * AANPASSING 4: lees de highscore uit localStorage (0 als er niets is).
+         * try/catch omdat localStorage in sommige browsers geblokkeerd is.
+         */
+        loadHighScore: function () {
+            try {
+                var saved = parseInt(localStorage.getItem(this.config.HIGHSCORE_KEY), 10);
+                return isNaN(saved) ? 0 : saved;
+            } catch (e) {
+                return 0;
+            }
+        },
+
+        /**
+         * AANPASSING 4: schrijf de highscore naar localStorage.
+         */
+        saveHighScore: function (score) {
+            try {
+                localStorage.setItem(this.config.HIGHSCORE_KEY, String(score));
+            } catch (e) {
+                // Opslaan lukt niet: dan blijft de highscore alleen deze sessie bewaard.
+            }
         },
 
         stop: function () {
@@ -830,6 +930,8 @@
                 this.playing = true;
                 this.crashed = false;
                 this.distanceRan = 0;
+                this.lives = this.config.LIVES;   // AANPASSING 3
+                this.invincibleTimer = 0;         // AANPASSING 3
                 this.setSpeed(this.config.SPEED);
                 this.time = getTimeStamp();
                 this.containerEl.classList.remove(Runner.classes.CRASHED);
@@ -1550,6 +1652,8 @@
         this.speedDrop = false;
         this.jumpCount = 0;
         this.jumpspotX = 0;
+        this.airJumps = 0;      // AANPASSING 2: aantal sprongen in de lucht
+        this.blinking = false;  // AANPASSING 3: knipperen na een botsing
 
         this.init();
     };
@@ -1736,6 +1840,13 @@
             sourceX += this.spritePos.x;
             sourceY += this.spritePos.y;
 
+            // AANPASSING 3: knipperen. Om de 100 ms wisselt de dino tussen
+            // doorzichtig en normaal.
+            this.canvasCtx.save();
+            if (this.blinking && Math.floor(getTimeStamp() / 100) % 2 === 0) {
+                this.canvasCtx.globalAlpha = 0.3;
+            }
+
             // Ducking.
             if (this.ducking && this.status != Trex.status.CRASHED) {
                 this.canvasCtx.drawImage(Runner.imageSprite, sourceX, sourceY,
@@ -1753,6 +1864,7 @@
                     this.xPos, this.yPos,
                     this.config.WIDTH, this.config.HEIGHT);
             }
+            this.canvasCtx.restore(); // AANPASSING 3
         },
 
         /**
@@ -1797,6 +1909,18 @@
         },
 
         /**
+         * AANPASSING 2: extra sprong terwijl de dino al in de lucht is.
+         * De snelheid wordt opnieuw omhoog gezet, net als bij een gewone sprong.
+         * @param {number} speed
+         */
+        airJump: function (speed) {
+            this.jumpVelocity = this.config.INIITAL_JUMP_VELOCITY - (speed / 10);
+            this.reachedMinHeight = false;
+            this.speedDrop = false;
+            this.airJumps++;
+        },
+
+        /**
          * Jump is complete, falling down.
          */
         endJump: function () {
@@ -1824,6 +1948,13 @@
             }
 
             this.jumpVelocity += this.config.GRAVITY * framesElapsed;
+
+            // AANPASSING 2: plafond. Door de dubbele sprong kan de dino anders
+            // boven het scherm uit vliegen. Bij y = 0 stopt de stijging.
+            if (this.yPos < 0) {
+                this.yPos = 0;
+                this.jumpVelocity = Math.max(this.jumpVelocity, 0);
+            }
 
             // Minimum height has been reached.
             if (this.yPos < this.minJumpHeight || this.speedDrop) {
@@ -1877,6 +2008,7 @@
             this.midair = false;
             this.speedDrop = false;
             this.jumpCount = 0;
+            this.airJumps = 0; // AANPASSING 2: weer op de grond, teller op 0
         }
     };
 
